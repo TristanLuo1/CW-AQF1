@@ -158,7 +158,34 @@ confidence_interval = [
     option_price + 1.96 * sigv / np.sqrt(N)
 ]
 
-# Display results
 print(f"Monte Carlo price of the lookback put option: {option_price:.4f}")
 print(f"95% confidence interval: ({confidence_interval[0]:.4f}, {confidence_interval[1]:.4f})")
 print(f"Width of the confidence interval: {confidence_interval[1] - confidence_interval[0]:.4f}")
+
+
+#6
+
+initial_N = 10000
+
+np.random.seed(0)
+Z = np.random.normal(0, 1, initial_N)
+ST_standard = S0 * np.exp((r - 0.5 * sigma**2) * T + sigma * np.sqrt(T) * Z)
+payoffs_standard = np.maximum(K - ST_standard, 0)
+
+sigma_standard = np.std(payoffs_standard)
+
+ST_antithetic1 = ST_standard
+ST_antithetic2 = S0 * np.exp((r - 0.5 * sigma**2) * T - sigma * np.sqrt(T) * Z)
+payoffs_antithetic = (np.maximum(K - ST_antithetic1, 0) + np.maximum(K - ST_antithetic2, 0)) / 2
+
+sigma_antithetic = np.std(payoffs_antithetic)
+
+target_width = 0.01
+N_standard = (2 * 1.96 * sigma_standard / target_width) ** 2
+N_antithetic = (2 * 1.96 * sigma_antithetic / target_width) ** 2
+
+
+print(f"Estimated standard deviation (Standard MC): {sigma_standard:.4f}")
+print(f"Estimated standard deviation (Antithetic MC): {sigma_antithetic:.4f}")
+print(f"Required simulations for Standard MC: {int(N_standard):,}")
+print(f"Required simulations for Antithetic MC: {int(N_antithetic):,}")
