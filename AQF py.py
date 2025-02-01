@@ -165,27 +165,64 @@ print(f"Width of the confidence interval: {confidence_interval[1] - confidence_i
 
 #6
 
-initial_N = 10000
+import numpy as np
+
+# Parameters
+S0 = 100
+sigma = 0.2
+r = 0.015
+T = 1
+K = 100
+N_initial = 10000
+M = 252
+
+# Generate stock price paths and calculate payoffs (Standard MC)
+np.random.seed(0)
+dt = T / M
+Z = np.random.normal(0, 1, (N_initial, M))
+S_paths = np.zeros((N_initial, M + 1))
+S_paths[:, 0] = S0
+
+for t in range(1, M + 1):
+    S_paths[:, t] = S_paths[:, t - 1] * np.exp((r - 0.5 * sigma**2) * dt + sigma * np.sqrt(dt) * Z[:, t - 1])
+
+max_prices = np.max(S_paths, axis=1)
+ST = S_paths[:, -1]
+payoffs_standard = np.maximum(max_prices - ST, 0)
+discounted_payoffs_standard = np.exp(-r * T) * payoffs_standard
+
+# Estimate standard deviation
+sigma_standard = np.std(discounted_payoffs_standard)
+
+width_target = 0.01
+critical_value = 1.96
+N_required_standard = (2 * critical_value * sigma_standard / width_target) ** 2
 
 np.random.seed(0)
-Z = np.random.normal(0, 1, initial_N)
-ST_standard = S0 * np.exp((r - 0.5 * sigma**2) * T + sigma * np.sqrt(T) * Z)
-payoffs_standard = np.maximum(K - ST_standard, 0)
+Z = np.random.normal(0, 1, (N_initial, M))
 
-sigma_standard = np.std(payoffs_standard)
+S_paths1 = np.zeros((N_initial, M + 1))
+S_paths2 = np.zeros((N_initial, M + 1))
+S_paths1[:, 0], S_paths2[:, 0] = S0, S0
 
-ST_antithetic1 = ST_standard
-ST_antithetic2 = S0 * np.exp((r - 0.5 * sigma**2) * T - sigma * np.sqrt(T) * Z)
-payoffs_antithetic = (np.maximum(K - ST_antithetic1, 0) + np.maximum(K - ST_antithetic2, 0)) / 2
+for t in range(1, M + 1):
+    S_paths1[:, t] = S_paths1[:, t - 1] * np.exp((r - 0.5 * sigma**2) * dt + sigma * np.sqrt(dt) * Z[:, t - 1])
+    S_paths2[:, t] = S_paths2[:, t - 1] * np.exp((r - 0.5 * sigma**2) * dt - sigma * np.sqrt(dt) * Z[:, t - 1])
 
-sigma_antithetic = np.std(payoffs_antithetic)
+max_prices1, max_prices2 = np.max(S_paths1, axis=1), np.max(S_paths2, axis=1)
+ST1, ST2 = S_paths1[:, -1], S_paths2[:, -1]
 
-target_width = 0.01
-N_standard = (2 * 1.96 * sigma_standard / target_width) ** 2
-N_antithetic = (2 * 1.96 * sigma_antithetic / target_width) ** 2
+payoffs1 = np.maximum(max_prices1 - ST1, 0)
+payoffs2 = np.maximum(max_prices2 - ST2, 0)
+payoffs_antithetic = (payoffs1 + payoffs2) / 2
+discounted_payoffs_antithetic = np.exp(-r * T) * payoffs_antithetic
+
+sigma_antithetic = np.std(discounted_payoffs_antithetic)
+
+N_required_antithetic = (2 * critical_value * sigma_antithetic / width_target) ** 2
 
 
 print(f"Estimated standard deviation (Standard MC): {sigma_standard:.4f}")
 print(f"Estimated standard deviation (Antithetic MC): {sigma_antithetic:.4f}")
-print(f"Required simulations for Standard MC: {int(N_standard):,}")
-print(f"Required simulations for Antithetic MC: {int(N_antithetic):,}")
+print(f"Required N for Standard MC to achieve width 0.01: {int(N_required_standard)}")
+print(f"Required N for Antithetic MC to achieve width 0.01: {int(N_required_antithetic)}")
