@@ -2,7 +2,7 @@ import numpy as np
 from scipy.stats import norm
 
 S0 = 100          # Initial stock price
-K = 100           # Strike price
+K = 100          # Strike price
 sigma = 0.2       # Volatility (20%)
 r = 0.015         # Risk-free rate (1.5%)
 T = 1             # Time to maturity (1 year)
@@ -42,6 +42,18 @@ payoffs = (payoffs1 + payoffs2) / 2
 
 option_price = np.exp(-r * T) * np.mean(payoffs)
 
+# Use the Black-Scholes formula to find the exact control option price
+def black_scholes_put(S, K, T, r, sigma):
+    d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+    d2 = d1 - sigma * np.sqrt(T)
+    return K * np.exp(-r * T) * norm.cdf(-d2) - S * norm.cdf(-d1)
+
+# Theoretical price using the Black-Scholes formula
+option_price_bs_theoretical = black_scholes_put(S0, K, T, r, sigma)
+
+# Print the theoretical price for comparison
+print(f"Theoretical Black-Scholes price of the put option (calculated): {option_price_bs_theoretical:.4f}")
+
 sigv = np.std(payoffs)
 confidence_interval = [
     option_price - 1.96 * sigv / np.sqrt(N),
@@ -55,7 +67,7 @@ print(f"Width of the confidence interval: {confidence_interval[1] - confidence_i
 
 #Q3
 
-B = 80            # Barrier level
+B = 64.55# Barrier level in British Pounds with exchange rate USDGBP = 0.81
 
 dt = T / M
 Z = np.random.normal(0, 1, (N, M))
@@ -67,10 +79,8 @@ S_paths[:, 0] = S0
 for t in range(1, M + 1):
     S_paths[:, t] = S_paths[:, t - 1] * np.exp((r - 0.5 * sigma**2) * dt + sigma * np.sqrt(dt) * Z[:, t - 1])
 
-# Step 2: Check barrier condition
 barrier_breached = np.any(S_paths <= B, axis=1)
 
-# Step 3: Calculate the payoff for paths where the barrier was breached
 ST = S_paths[:, -1]  # Terminal stock prices
 payoffs = np.where(barrier_breached, np.maximum(K - ST, 0), 0)
 
@@ -86,10 +96,10 @@ print(f"Monte Carlo price of the knock-in put option: {option_price:.4f}")
 print(f"95% confidence interval: ({confidence_interval[0]:.4f}, {confidence_interval[1]:.4f})")
 print(f"Width of the confidence interval: {confidence_interval[1] - confidence_interval[0]:.4f}")
 
+
+
 #Q4
 
-
-# Implement the knock-out condition
 barrier_breached = np.any(S_paths <= B, axis=1)
 
 # Calculate the knock-out option payoff
@@ -100,7 +110,6 @@ control_payoffs = np.maximum(K - ST, 0)
 
 C_knock_out = np.exp(-r * T) * np.mean(knock_out_payoffs)
 C_control = np.exp(-r * T) * np.mean(control_payoffs)
-
 # Use the Black-Scholes formula to find the exact control option price
 def black_scholes_put(S, K, T, r, sigma):
     d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
@@ -125,5 +134,31 @@ confidence_interval = [
 ]
 
 print(f"Monte Carlo price of the knock-out put option (with control variate): {C_final:.4f}")
+print(f"95% confidence interval: ({confidence_interval[0]:.4f}, {confidence_interval[1]:.4f})")
+print(f"Width of the confidence interval: {confidence_interval[1] - confidence_interval[0]:.4f}")
+
+
+
+#Q5
+
+# Simulate stock price paths using geometric Brownian motion
+for t in range(1, M + 1):
+    S_paths[:, t] = S_paths[:, t - 1] * np.exp((r - 0.5 * sigma**2) * dt + sigma * np.sqrt(dt) * Z[:, t - 1])
+
+max_prices = np.max(S_paths, axis=1)
+ST = S_paths[:, -1]
+payoffs = np.maximum(max_prices - ST, 0)
+
+
+option_price = np.exp(-r * T) * np.mean(payoffs)
+
+sigv = np.std(payoffs)
+confidence_interval = [
+    option_price - 1.96 * sigv / np.sqrt(N),
+    option_price + 1.96 * sigv / np.sqrt(N)
+]
+
+# Display results
+print(f"Monte Carlo price of the lookback put option: {option_price:.4f}")
 print(f"95% confidence interval: ({confidence_interval[0]:.4f}, {confidence_interval[1]:.4f})")
 print(f"Width of the confidence interval: {confidence_interval[1] - confidence_interval[0]:.4f}")
