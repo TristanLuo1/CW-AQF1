@@ -163,66 +163,62 @@ print(f"95% confidence interval: ({confidence_interval[0]:.4f}, {confidence_inte
 print(f"Width of the confidence interval: {confidence_interval[1] - confidence_interval[0]:.4f}")
 
 
-#6
+#Q6
+
+# Revised code for Lookback option with path dependency
 
 import numpy as np
 
 # Parameters
-S0 = 100
-sigma = 0.2
-r = 0.015
-T = 1
-K = 100
-N_initial = 10000
-M = 252
+S0 = 100          # Initial stock price
+sigma = 0.2       # Volatility (20%)
+r = 0.015         # Risk-free rate (1.5%)
+T = 1             # Time to maturity (1 year)
+K = 100           # Strike price is based on max price during the path
+N_initial = 10000 # Initial simulations to estimate standard deviation
+M = 252           # Number of time steps (daily observations for 1 year)
 
-# Generate stock price paths and calculate payoffs (Standard MC)
-np.random.seed(0)
+# Step 1: Generate random paths and their antithetic counterparts
+np.random.seed(1)
 dt = T / M
 Z = np.random.normal(0, 1, (N_initial, M))
-S_paths = np.zeros((N_initial, M + 1))
-S_paths[:, 0] = S0
+S_paths_1 = np.zeros((N_initial, M + 1))
+S_paths_2 = np.zeros((N_initial, M + 1))
+S_paths_1[:, 0] = S0
+S_paths_2[:, 0] = S0
 
+# Simulate paths using Geometric Brownian Motion (GBM)
 for t in range(1, M + 1):
-    S_paths[:, t] = S_paths[:, t - 1] * np.exp((r - 0.5 * sigma**2) * dt + sigma * np.sqrt(dt) * Z[:, t - 1])
+    S_paths_1[:, t] = S_paths_1[:, t - 1] * np.exp((r - 0.5 * sigma**2) * dt + sigma * np.sqrt(dt) * Z[:, t - 1])
+    S_paths_2[:, t] = S_paths_2[:, t - 1] * np.exp((r - 0.5 * sigma**2) * dt + sigma * np.sqrt(dt) * (-Z[:, t - 1]))
 
-max_prices = np.max(S_paths, axis=1)
-ST = S_paths[:, -1]
-payoffs_standard = np.maximum(max_prices - ST, 0)
-discounted_payoffs_standard = np.exp(-r * T) * payoffs_standard
+# Step 2: Calculate payoffs for Lookback put option (dependent on maximum price)
+max_price_1 = np.max(S_paths_1, axis=1)
+max_price_2 = np.max(S_paths_2, axis=1)
+payoffs_1 = np.maximum(max_price_1 - S_paths_1[:, -1], 0)
+payoffs_2 = np.maximum(max_price_2 - S_paths_2[:, -1], 0)
 
-# Estimate standard deviation
-sigma_standard = np.std(discounted_payoffs_standard)
+# Step 3: Calculate covariance and variance for both methods
+covariance = np.cov(payoffs_1, payoffs_2)[0, 1]
+variance_standard = np.var(payoffs_1)
+variance_antithetic = (variance_standard + variance_standard + 2 * covariance) / 4
+correlation = covariance / (np.std(payoffs_1) * np.std(payoffs_2))
 
-width_target = 0.01
+# Step 4: Calculate standard deviations
+std_standard = np.sqrt(variance_standard)
+std_antithetic = np.sqrt(variance_antithetic)
+
+# Step 5: Calculate the number of simulations required
+desired_width = 0.01
 critical_value = 1.96
-N_required_standard = (2 * critical_value * sigma_standard / width_target) ** 2
 
-np.random.seed(0)
-Z = np.random.normal(0, 1, (N_initial, M))
+N_standard = (2 * critical_value * std_standard / desired_width) ** 2
+N_antithetic = (2 * critical_value * std_antithetic / desired_width) ** 2
 
-S_paths1 = np.zeros((N_initial, M + 1))
-S_paths2 = np.zeros((N_initial, M + 1))
-S_paths1[:, 0], S_paths2[:, 0] = S0, S0
-
-for t in range(1, M + 1):
-    S_paths1[:, t] = S_paths1[:, t - 1] * np.exp((r - 0.5 * sigma**2) * dt + sigma * np.sqrt(dt) * Z[:, t - 1])
-    S_paths2[:, t] = S_paths2[:, t - 1] * np.exp((r - 0.5 * sigma**2) * dt - sigma * np.sqrt(dt) * Z[:, t - 1])
-
-max_prices1, max_prices2 = np.max(S_paths1, axis=1), np.max(S_paths2, axis=1)
-ST1, ST2 = S_paths1[:, -1], S_paths2[:, -1]
-
-payoffs1 = np.maximum(max_prices1 - ST1, 0)
-payoffs2 = np.maximum(max_prices2 - ST2, 0)
-payoffs_antithetic = (payoffs1 + payoffs2) / 2
-discounted_payoffs_antithetic = np.exp(-r * T) * payoffs_antithetic
-
-sigma_antithetic = np.std(discounted_payoffs_antithetic)
-
-N_required_antithetic = (2 * critical_value * sigma_antithetic / width_target) ** 2
-
-
-print(f"Estimated standard deviation (Standard MC): {sigma_standard:.4f}")
-print(f"Estimated standard deviation (Antithetic MC): {sigma_antithetic:.4f}")
-print(f"Required N for Standard MC to achieve width 0.01: {int(N_required_standard)}")
-print(f"Required N for Antithetic MC to achieve width 0.01: {int(N_required_antithetic)}")
+# Step 6: Display results
+print(f"Estimated standard deviation (standard MC): {std_standard:.4f}")
+print(f"Estimated standard deviation (antithetic variables): {std_antithetic:.4f}")
+print(f"Covariance between paths: {covariance:.4f}")
+print(f"Correlation between paths: {correlation:.4f}")
+print(f"Required N for standard MC: {int(np.ceil(N_standard))}")
+print(f"Required N for antithetic variables: {int(np.ceil(N_antithetic))}")
