@@ -167,6 +167,8 @@ print(f"Width of the confidence interval: {confidence_interval[1] - confidence_i
 
 import numpy as np
 
+import numpy as np
+
 # Parameters
 S0 = 100          # Initial stock price
 sigma = 0.2       # Volatility (20%)
@@ -180,13 +182,12 @@ M = 252           # Number of time steps (daily observations for 1 year)
 np.random.seed(1)
 dt = T / M
 Z = np.random.normal(0, 1, (N_initial, M))
-# Parameters remain the same
 S_paths_1 = np.zeros((N_initial, M + 1))
 S_paths_2 = np.zeros((N_initial, M + 1))
 S_paths_1[:, 0] = S0
 S_paths_2[:, 0] = S0
 
-# Simulate paths using GBM
+# Simulate paths using Geometric Brownian Motion (GBM)
 for t in range(1, M + 1):
     S_paths_1[:, t] = S_paths_1[:, t - 1] * np.exp((r - 0.5 * sigma**2) * dt + sigma * np.sqrt(dt) * Z[:, t - 1])
     S_paths_2[:, t] = S_paths_2[:, t - 1] * np.exp((r - 0.5 * sigma**2) * dt + sigma * np.sqrt(dt) * (-Z[:, t - 1]))
@@ -201,22 +202,24 @@ payoffs_2 = np.maximum(max_price_2 - S_paths_2[:, -1], 0)
 discounted_payoffs_1 = np.exp(-r * T) * payoffs_1
 discounted_payoffs_2 = np.exp(-r * T) * payoffs_2
 
-# Calculate covariance and variance with discounted payoffs
+# Combine payoffs and calculate single variance
+combined_payoffs = np.concatenate((discounted_payoffs_1, discounted_payoffs_2))
+sigma_v_squared = np.var(combined_payoffs)
+
+# Calculate covariance and correlation between paths
 covariance = np.cov(discounted_payoffs_1, discounted_payoffs_2)[0, 1]
-variance_standard = np.var(discounted_payoffs_1)
-variance_antithetic = (variance_standard + variance_standard + 2 * covariance) / 4
 correlation = covariance / (np.std(discounted_payoffs_1) * np.std(discounted_payoffs_2))
 
-# Standard deviations
-std_standard = np.sqrt(variance_standard)
-std_antithetic = np.sqrt(variance_antithetic)
+# Calculate standard deviations based on the single variance
+std_standard = np.sqrt(sigma_v_squared)
+std_antithetic = np.sqrt(sigma_v_squared * (1 + correlation) / 2)
 
-# Calculate number of simulations required
+# Calculate the number of simulations required
 desired_width = 0.01
 critical_value = 1.96
 
-N_standard = (2 * critical_value * std_standard / desired_width) ** 2
-N_antithetic = (2 * critical_value * std_antithetic / desired_width) ** 2
+N_standard = (critical_value * std_standard / (desired_width / 2)) ** 2
+N_antithetic = (critical_value * std_antithetic / (desired_width / 2)) ** 2
 
 # Display results
 print(f"Estimated standard deviation (standard MC): {std_standard:.4f}")
@@ -225,3 +228,4 @@ print(f"Covariance between paths: {covariance:.4f}")
 print(f"Correlation between paths: {correlation:.4f}")
 print(f"Required N for standard MC: {int(np.ceil(N_standard))}")
 print(f"Required N for antithetic variables: {int(np.ceil(N_antithetic))}")
+
