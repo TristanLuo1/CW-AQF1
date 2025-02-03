@@ -7,7 +7,7 @@ sigma = 0.2       # Volatility (20%)
 r = 0.015         # Risk-free rate (1.5%)
 T = 1             # Time to maturity (1 year)
 N = 10000         # Number of Monte Carlo simulations
-M = 252           # Number of time steps (business days)
+M = 2016           # Number of time steps (business days)
 
 # Q1
 # Simulate terminal stock prices using Geometric Brownian Motion
@@ -72,7 +72,7 @@ print(f"Width of the confidence interval: {confidence_interval[1] - confidence_i
 
 
 # --- Q3: Knock-in Option ---
-
+np.random.seed(1)
 # Parameters (as defined earlier)
 B = 64.55  # Barrier level
 dt = T / M
@@ -104,7 +104,7 @@ print(f"95% confidence interval: ({confidence_interval[0]:.4f}, {confidence_inte
 print(f"Width of the confidence interval: {confidence_interval[1] - confidence_interval[0]:.4f}")
 
 # Q4
-
+np.random.seed(1)
 # Knock-out payoff
 knock_out_payoffs = np.where(barrier_breached, 0, np.maximum(K - ST, 0))
 discounted_knock_out_payoffs = np.exp(-r * T) * knock_out_payoffs
@@ -137,7 +137,7 @@ print(f"Width of the confidence interval: {confidence_interval[1] - confidence_i
 
 
 #Q5
-
+np.random.seed(1)
 # Simulate stock price paths using geometric Brownian motion
 for t in range(1, M + 1):
     S_paths[:, t] = S_paths[:, t - 1] * np.exp((r - 0.5 * sigma**2) * dt + sigma * np.sqrt(dt) * Z[:, t - 1])
