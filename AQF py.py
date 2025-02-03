@@ -167,16 +167,7 @@ print(f"Width of the confidence interval: {confidence_interval[1] - confidence_i
 
 import numpy as np
 
-import numpy as np
-
-# Parameters
-S0 = 100          # Initial stock price
-sigma = 0.2       # Volatility (20%)
-r = 0.015         # Risk-free rate (1.5%)
-T = 1             # Time to maturity (1 year)
-K = 100           # Strike price is based on max price during the path
-N_initial = 10000 # Initial simulations to estimate standard deviation
-M = 252           # Number of time steps (daily observations for 1 year)
+N_initial = 10000
 
 # Generate random paths and their antithetic counterparts
 np.random.seed(1)
@@ -206,7 +197,6 @@ discounted_payoffs_2 = np.exp(-r * T) * payoffs_2
 combined_payoffs = np.concatenate((discounted_payoffs_1, discounted_payoffs_2))
 sigma_v_squared = np.var(combined_payoffs)
 
-# Calculate covariance and correlation between paths
 covariance = np.cov(discounted_payoffs_1, discounted_payoffs_2)[0, 1]
 correlation = covariance / (np.std(discounted_payoffs_1) * np.std(discounted_payoffs_2))
 
@@ -221,7 +211,6 @@ critical_value = 1.96
 N_standard = (critical_value * std_standard / (desired_width / 2)) ** 2
 N_antithetic = (critical_value * std_antithetic / (desired_width / 2)) ** 2
 
-# Display results
 print(f"Estimated standard deviation (standard MC): {std_standard:.4f}")
 print(f"Estimated standard deviation (antithetic variables): {std_antithetic:.4f}")
 print(f"Covariance between paths: {covariance:.4f}")
